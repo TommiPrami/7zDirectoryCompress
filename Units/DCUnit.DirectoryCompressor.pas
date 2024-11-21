@@ -152,26 +152,36 @@ procedure TDirectoryCompressor.CompressFile(const ACurrentDirectoryName, ADestin
 const
   EXE_7Z = 'C:\Program Files\7-Zip\7z.exe';
 var
-  LTargetArchiveName: string;
-  LDestinationDir: string;
+  LDestinationDirName: string;
+  LDestinationRoot: string;
   LCommandLine: string;
 begin
-  LTargetArchiveName := GetFileNameOnly(ACurrentDirectoryName);
-  LDestinationDir := ADestinationRoot + LTargetArchiveName;
+  LDestinationDirName := GetFileNameOnly(GetFileNameWithFilter(IncludeTrailingPathDelimiter(ACurrentDirectoryName),
+    FCommandLineOptions.DestinationFileNameFilter));
+
+  if LDestinationDirName.IsEmpty then
+    Exit;
+
+  LDestinationRoot := IncludeTrailingPathDelimiter(ADestinationRoot + LDestinationDirName);
 
   if Lock then
   try
-    LCommandLine := EXE_7Z + ' ' + 'a -mx9 -md1024m -mfb256 -mmt=off -v1000m "'
-      + IncludeTrailingPathDelimiter(LDestinationDir) + LTargetArchiveName + '.7z" "'
-      + ADestinationRoot + ACurrentDirectoryName + '"';
+    LCommandLine := EXE_7Z.QuotedString('"') + ' ' + 'a -r'
+      + GetCompressionCommandlineOptions(FCommandLineOptions.CompressionLevel) + '-v1000m '
+      + '"' + LDestinationRoot + LDestinationDirName + '.7z" "'
+      + IncludeTrailingPathDelimiter(ACurrentDirectoryName) + '*.*' +  '"';
 
     WriteLn('Executing: ' + LCommandLine + '...');
+
+    Inc(FTaksStarted);
   finally
     Unlock
   end;
 
-  WaitForSystemStatus(IfThen(TInterlocked.Read(FTaksStarted) = 0, 100, 4000), 76.66, 76.66);
-  TInterlocked.Add(FTaksStarted, 1);
+  WaitForSystemStatus(IfThen(FTaksStarted <= 1, 333, 10 * 666), 76.66, 76.66);
+
+  if not DirectoryExists(LDestinationRoot) then
+    ForceDirectories(LDestinationRoot);
 
   ExecuteAndWait(LCommandLine, fcpcIdle);
 end;
@@ -189,13 +199,15 @@ begin
     LLDestinationDirName := GetFileNameOnly(GetFileNameWithFilter(LCurrentDirectory, FCommandLineOptions.DestinationFileNameFilter));
 
     if LLDestinationDirName.IsEmpty then
+    begin
+      ADirectories.Delete(LIndex);
+
       Continue;
+    end;
 
     LDestinationDir := ADestinationRootDirectory + LLDestinationDirName;
 
-    if not DirectoryExists(LDestinationDir) then
-      ForceDirectories(LDestinationDir)
-    else if not DirEmpty(LDestinationDir) then
+    if not DirEmpty(LDestinationDir) then
     begin
       WriteLn('Destination dir not empty: ' + LDestinationDir.QuotedString('"'));
 

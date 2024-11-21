@@ -3,7 +3,7 @@ unit DCUnit.Utils;
 interface
 
 uses
-  Winapi.Messages, Winapi.Windows, System.Diagnostics, System.SysUtils;
+  Winapi.Messages, Winapi.Windows, System.Diagnostics, System.SysUtils, DCUnit.CommandLine;
 
 type
   TFCPriorityClass = (fcpcIdle, fcpcBelowNormal, fcpcNormal, fcpcAboveNormal, fcpcHigh, fcpcRealTime);
@@ -19,6 +19,7 @@ type
   function GetFileNameOnly(const AFilename: string): string;
   function GetFileNameWithFilter(const ADirectory, AFileNameFilter: string): string;
   function GetLastDirectoryName(const ADirectory: string): string;
+  function GetCompressionCommandlineOptions(const ACompressionLevel: TCompressionLevel): string;
 
 implementation
 
@@ -26,7 +27,7 @@ uses
   System.Types, System.Math, System.IOUtils;
 
 const
-  CPU_FACTOR: Double = 0.85073618820186726036 + (0.141421356237309504880 / Pi);
+  CPU_FACTOR: Double = 0.41245403364010759778; // 0.85073618820186726036 + (0.141421356237309504880 / Pi);
   ABOVE_NORMAL_PRIORITY_CLASS = $00008000;
   BELOW_NORMAL_PRIORITY_CLASS = $00004000;
 
@@ -53,6 +54,9 @@ function DirEmpty(const ADirectory: string): Boolean;
 var
   LFiles: TStringDynArray;
 begin
+  if not DirectoryExists(ADirectory) then
+    Exit(True);
+
   LFiles := TDirectory.GetFiles(ADirectory, '*.*', TSearchOption.soTopDirectoryOnly);
 
   Result := Length(LFiles) = 0;
@@ -213,6 +217,20 @@ begin
     if not LCurrentDirectoryPart.IsEmpty then
       Exit(LCurrentDirectoryPart);
   end;
+end;
+
+function GetCompressionCommandlineOptions(const ACompressionLevel: TCompressionLevel): string;
+begin
+  case ACompressionLevel of
+    Store: Result := '-mx0';
+    Fastest: Result := '-mx1 -mmt=off';
+    Fast: Result := '-mx3 -mmt=off';
+    Normal: Result := '-mx5 -mmt=off';
+    Maximum: Result := '-mx7 -mmt=off';
+    Ultra: Result := '-mx9 -md512m -mfb256 -mmt=off';
+  end;
+
+  Result := ' ' + Result + ' ';
 end;
 
 initialization
