@@ -33,7 +33,7 @@ type
 implementation
 
 uses
-  DirectoryCompress7z.Utils;
+  DCUnit.DirectoryCompressor;
 
 function ParseCommandLine(const ACommandlineOptions: TDirectoryCompressLineOptions): Boolean;
 var

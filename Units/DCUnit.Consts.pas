@@ -1,4 +1,4 @@
-﻿unit DirectoryCompress7z.Consts;
+﻿unit DCUnit.Consts;
 
 interface
 

@@ -1,4 +1,4 @@
-unit DirectoryCompress7z.Utils;
+unit DCUnit.Utils;
 
 interface
 
