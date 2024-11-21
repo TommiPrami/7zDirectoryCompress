@@ -31,8 +31,8 @@ type
     function Lock: Boolean; inline;
     procedure Unlock; inline;
     procedure LockingWriteLn(const ALine: string);
-    procedure CompressFile(const ARootDirectory, AFilename: string);
-    procedure FilterByDirectories(const AFiles: TStringList; const ARootDirectory: string);
+    procedure CompressFile(const ACurrentDirectoryName, ADestinationRoot: string);
+    procedure FilterByDirectories(const ADirectories: TStringList; const ADestinationRootDirectory: string);
   public
     constructor Create(const ACommandLineOptions: TDirectoryCompressLineOptions);
     destructor Destroy; override;
@@ -70,21 +70,21 @@ end;
 
 procedure TDirectoryCompress7z.Execute;
 var
-  LFiles: TStringList;
+  LDirectories: TStringList;
 begin
-  LFiles := TStringList.Create;
+  LDirectories := TStringList.Create;
   try
-    LFiles.AddStrings(TDirectory.GetDirectories(FCommandLineOptions.SourceRoot, '*.*', TSearchOption.soTopDirectoryOnly));
+    LDirectories.AddStrings(TDirectory.GetDirectories(FCommandLineOptions.SourceRoot, '*.*', TSearchOption.soTopDirectoryOnly));
 
-    FilterByDirectories(LFiles, FCommandLineOptions.SourceRoot);
+    FilterByDirectories(LDirectories, FCommandLineOptions.DestinationRoot);
 
-    if LFiles.Count > 0 then
+    if LDirectories.Count > 0 then
     begin
       var LStopWatch := TStopWatch.StartNew;
 
       FRunningTasks := True;
 
-      Parallel.ForEach(LFiles)
+      Parallel.ForEach(LDirectories)
         .NumTasks(GetMaxThreadCount)
         .OnStop(
           procedure
@@ -132,7 +132,7 @@ begin
       Exit;
     end;
   finally
-    LFiles.Free;
+    LDirectories.Free;
   end;
 end;
 
@@ -148,7 +148,7 @@ begin
   for var LIndex := 1 to 5 do
   begin
     TotalCpuUsagePercentage;
-    Sleep(100);
+    Sleep(Random(100));
   end;
 end;
 
@@ -159,22 +159,22 @@ begin
   inherited Destroy;
 end;
 
-procedure TDirectoryCompress7z.CompressFile(const ARootDirectory, AFilename: string);
+procedure TDirectoryCompress7z.CompressFile(const ACurrentDirectoryName, ADestinationRoot: string);
 const
   EXE_7Z = 'C:\Program Files\7-Zip\7z.exe';
 var
-  LFileNameOnly: string;
+  LTargetArchiveName: string;
   LDestinationDir: string;
   LCommandLine: string;
 begin
-  LFileNameOnly := GetFileNameOnly(AFilename);
-  LDestinationDir := ARootDirectory + LFileNameOnly;
+  LTargetArchiveName := GetFileNameOnly(ACurrentDirectoryName);
+  LDestinationDir := ADestinationRoot + LTargetArchiveName;
 
   if Lock then
   try
     LCommandLine := EXE_7Z + ' ' + 'a -mx9 -md1024m -mfb256 -mmt=off -v1000m "'
-      + IncludeTrailingPathDelimiter(LDestinationDir) + LFileNameOnly + '.7z" "'
-      + ARootDirectory + AFilename + '"';
+      + IncludeTrailingPathDelimiter(LDestinationDir) + LTargetArchiveName + '.7z" "'
+      + ADestinationRoot + ACurrentDirectoryName + '"';
 
     WriteLn('Executing: ' + LCommandLine + '...');
   finally
@@ -187,27 +187,35 @@ begin
   ExecuteAndWait(LCommandLine, fcpcIdle);
 end;
 
-procedure TDirectoryCompress7z.FilterByDirectories(const AFiles: TStringList; const ARootDirectory: string);
+procedure TDirectoryCompress7z.FilterByDirectories(const ADirectories: TStringList; const ADestinationRootDirectory: string);
 var
   LIndex: Integer;
-  LFileNameOnly: string;
+  LCurrentDirectory: string;
+  LLDestinationDirName: string;
   LDestinationDir: string;
 begin
-  for LIndex := AFiles.Count - 1 downto 0 do
+  for LIndex := ADirectories.Count - 1 downto 0 do
   begin
-    LFileNameOnly := GetFileNameOnly(AFiles[LIndex]);
-    LDestinationDir := ARootDirectory + LFileNameOnly;
+    LCurrentDirectory := ADirectories[LIndex];
+    LLDestinationDirName := GetFileNameOnly(GetFileNameWithFilter(LCurrentDirectory, FCommandLineOptions.DestinationFileNameFilter));
+
+    if LLDestinationDirName.IsEmpty then
+      Continue;
+
+    LDestinationDir := ADestinationRootDirectory + LLDestinationDirName;
 
     if not DirectoryExists(LDestinationDir) then
       ForceDirectories(LDestinationDir)
     else if not DirEmpty(LDestinationDir) then
     begin
       WriteLn('Destination dir not empty: ' + LDestinationDir.QuotedString('"'));
-      AFiles.Delete(LIndex);
+
+      ADirectories.Delete(LIndex);
     end;
   end;
 end;
 
+// main program body
 var
   LDirectoryCompress: TDirectoryCompress7z;
 begin
@@ -228,11 +236,6 @@ begin
       finally
         LDirectoryCompress.Free;
       end;
-    end
-    else
-    begin
-      PrintHelp;
-      Exit;
     end;
   except
     on E: Exception do

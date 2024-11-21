@@ -13,11 +13,12 @@ type
   function GetAvailableMemoryPercentage: Integer;
   function GetMaxThreadCount: Integer;
   function TotalCpuUsagePercentage: Double;
-  procedure PrintHelp;
   procedure ProcessMessages;
   procedure WaitForSystemStatus(const APreWaitMillisecs: Integer; const AMaxTotalCpuUsagePercentage, AMaxAValilableMemoryPercentage: Double);
   procedure ExecuteAndWait(const ACommandLine: string; const APriorityClass: TFCPriorityClass = fcpcNormal);
   function GetFileNameOnly(const AFilename: string): string;
+  function GetFileNameWithFilter(const ADirectory, AFileNameFilter: string): string;
+  function GetLastDirectoryName(const ADirectory: string): string;
 
 implementation
 
@@ -190,13 +191,28 @@ begin
     Result := Copy(Result, 1, Result.Length - LExtension.Length);
 end;
 
-procedure PrintHelp;
+function GetFileNameWithFilter(const ADirectory, AFileNameFilter: string): string;
 begin
-  // TODO: Add info what app supposed to do
+  var LFiles := TDirectory.GetFiles(IncludeTrailingPathDelimiter(ADirectory), AFileNameFilter, TSearchOption.soTopDirectoryOnly);
 
-  WriteLn('DirectoryCompress7z RootPath SearchPattern');
-  WriteLn('  DirectoryCompress7z "C:\Temp\" *.largefile');
-  WriteLn('');
+  for var LFileName in LFiles do
+  begin
+    if not LFileName.IsEmpty then
+      Exit(LFileName);
+  end;
+end;
+
+function GetLastDirectoryName(const ADirectory: string): string;
+begin
+  var LDirectoryArray := ADirectory.Split(['\', '/']);
+
+  for var LIndex := High(LDirectoryArray) downto Low(LDirectoryArray) do
+  begin
+    var LCurrentDirectoryPart := LDirectoryArray[LIndex];
+
+    if not LCurrentDirectoryPart.IsEmpty then
+      Exit(LCurrentDirectoryPart);
+  end;
 end;
 
 initialization
