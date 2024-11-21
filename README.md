@@ -1,0 +1,2 @@
+# 7zDirectoryCompress
+7zDirectoryCompress
