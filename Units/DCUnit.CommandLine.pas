@@ -3,11 +3,9 @@
 interface
 
 uses
-  Delphi.CommandLineParser;
+  Delphi.CommandLineParser, DCUnit.Utils;
 
 type
-  TCompressionLevel = (Store, Fastest, Fast, Normal, Maximum, Ultra);
-
   TDirectoryCompressLineOptions = class(TObject)
   strict private
     FSourceRoot: string;

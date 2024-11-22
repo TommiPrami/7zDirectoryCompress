@@ -3,9 +3,10 @@ unit DCUnit.Utils;
 interface
 
 uses
-  Winapi.Messages, Winapi.Windows, System.Diagnostics, System.SysUtils, DCUnit.CommandLine;
+  Winapi.Messages, Winapi.Windows, System.Diagnostics, System.SysUtils;
 
 type
+  TCompressionLevel = (Store, Fastest, Fast, Normal, Maximum, Ultra);
   TFCPriorityClass = (fcpcIdle, fcpcBelowNormal, fcpcNormal, fcpcAboveNormal, fcpcHigh, fcpcRealTime);
 
   function DirEmpty(const ADirectory: string): Boolean;
@@ -27,7 +28,6 @@ uses
   System.Types, System.Math, System.IOUtils;
 
 const
-  CPU_FACTOR: Double = 0.41245403364010759778 + (0.141421356237309504880 * 2.132632321754); // 0.85073618820186726036 + (0.141421356237309504880 / Pi);
   ABOVE_NORMAL_PRIORITY_CLASS = $00008000;
   BELOW_NORMAL_PRIORITY_CLASS = $00004000;
 
@@ -100,7 +100,7 @@ end;
 
 function GetMaxThreadCount: Integer;
 begin
-  Result := EnsureRange(Round(CPUCount * CPU_FACTOR), 1, CPUCount);
+  Result := EnsureRange(CPUCount - 1, 1, CPUCount);
 end;
 
 procedure ProcessMessages;
@@ -206,7 +206,7 @@ begin
   end;
 end;
 
-function GetLa§stDirectoryName(const ADirectory: string): string;
+function GetLastDirectoryName(const ADirectory: string): string;
 begin
   var LDirectoryArray := ADirectory.Split(['\', '/']);
 
